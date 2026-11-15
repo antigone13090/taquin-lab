@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run src",
     "test:e2e": "playwright test",
-    "check": "npm test && npm run build",
+    "check": "npm run format:check && npm test && npm run build",
     "format:check": "prettier --check src hosting tests .github *.json *.ts index.html README.md docs"
   },
   "dependencies": {

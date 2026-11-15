@@ -64,3 +64,43 @@ describe("moteur du taquin", () => {
     expect(trace.at(-1)?.value).toBe(2);
   });
 });
+
+describe("résolution sur les grandes grilles et budgets", () => {
+  for (const n of [4, 5]) {
+    for (const algorithm of ["A*", "IDA*"] as const) {
+      it(`${algorithm} résout réellement une grille ${n} × ${n}`, () => {
+        let board = goal(n);
+        for (const index of [
+          n * n - 2,
+          n * n - n - 2,
+          n * n - n - 3,
+          n * n - 2 * n - 3,
+        ])
+          board = move(board, n, index)!;
+        const result = solve(board, n, algorithm);
+        expect(result.status).toBe("solved");
+        expect(result.path).toHaveLength(4);
+        for (const index of result.path) board = move(board, n, index)!;
+        expect(board).toEqual(goal(n));
+      });
+    }
+  }
+  for (const algorithm of ["BFS", "A*", "IDA*"] as const) {
+    it(`${algorithm} respecte une limite de temps nulle`, () => {
+      expect(
+        solve([1, 2, 3, 4, 0, 6, 7, 5, 8], 3, algorithm, { maxMs: -1 }).status,
+      ).toBe("limit");
+    });
+  }
+  it("les trois algorithmes retrouvent le même optimum sur plusieurs chemins", () => {
+    let board = goal(3);
+    for (const index of [7, 4, 3, 0, 1, 4, 7, 8]) {
+      board = move(board, 3, index)!;
+      const results = (["BFS", "A*", "IDA*"] as const).map((a) =>
+        solve(board, 3, a),
+      );
+      expect(results.every((r) => r.status === "solved")).toBe(true);
+      expect(new Set(results.map((r) => r.path.length)).size).toBe(1);
+    }
+  });
+});

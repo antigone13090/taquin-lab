@@ -1,5 +1,9 @@
 # TAQUIN LAB
 
+**Jouer : https://taquin-lab.valentinlamede13.workers.dev/**
+
+[![Quality and deploy](https://github.com/antigone13090/taquin-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/antigone13090/taquin-lab/actions/workflows/ci.yml)
+
 Jeu du taquin et laboratoire pédagogique NSI, en français. React 19, TypeScript, Vite et Tailwind CSS 4. Licence MIT.
 
 ## Fonctionnalités
