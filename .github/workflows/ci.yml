@@ -50,6 +50,12 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Retain immutable hashed assets for sessions open during a deployment.
+          if git fetch origin gh-pages --depth=1; then
+            mkdir -p previous-build
+            git archive FETCH_HEAD assets | tar -x -C previous-build
+            cp -n previous-build/assets/* dist/assets/
+          fi
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
           cd dist

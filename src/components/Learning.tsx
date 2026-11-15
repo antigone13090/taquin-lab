@@ -1,27 +1,497 @@
-import {useMemo,useState,useEffect} from 'react';
-import {ArrowRight,ArrowLeft,RotateCcw,Play,Pause,Check,Code2,Layers,Lightbulb} from 'lucide-react';
-import {wellPlacedTrace} from '../core/puzzle';
-const sample=[1,2,3,4,0,6,7,5,8];
-const lessons=[
- {title:'01 · Représenter la grille',text:'Une liste de listes décrit les lignes. Aplatir la grille conserve son ordre de lecture. L’indice i correspond à la ligne i // 3 et à la colonne i % 3.',code:'def aplatir(grille):\n    return [tuile for ligne in grille\n            for tuile in ligne]\n\ndef position_vide(liste):\n    return liste.index(0)\n\n# [1, 2, 3, 4, 0, 6, 7, 5, 8]'},
- {title:'02 · Compter par récursivité',text:'Chaque appel traite une case et délègue la suite au prochain appel. La case vide ne compte pas. Le paramètre i augmente : len(grille) − i diminue jusqu’à 0, ce qui garantit la terminaison.',code:'def bien_placees(grille, i):\n    if i == len(grille):\n        return 0\n    if grille[i] == solution[i] and grille[i] != 0:\n        return 1 + bien_placees(grille, i + 1)\n    return bien_placees(grille, i + 1)'},
- {title:'03 · Vérifier la solution',text:'Le cas de base renvoie True après la dernière case. Une différence provoque un retour False immédiat : les appels restants sont inutiles.',code:'def est_resolu(grille, i):\n    if i == len(grille):\n        return True\n    if grille[i] != solution[i]:\n        return False\n    return est_resolu(grille, i + 1)'},
- {title:'04 · Déplacer et explorer',text:'Une direction décrit le mouvement du vide, comme dans le sujet. Une tuile se déplace en sens opposé. Les contrôles de ligne empêchent le passage artificiel du bord droit au bord gauche.',code:'def deplacer(grille, direction):\n    p = grille.index(0)\n    ligne, colonne = divmod(p, 3)\n    dl, dc = {"haut": (-1, 0), "bas": (1, 0),\n              "gauche": (0, -1), "droite": (0, 1)}[direction]\n    l, c = ligne + dl, colonne + dc\n    if not (0 <= l < 3 and 0 <= c < 3):\n        return None\n    copie = grille.copy()\n    q = 3 * l + c\n    copie[p], copie[q] = copie[q], copie[p]\n    return copie\n\ndef voisins(grille):\n    resultat = []\n    for d in ["haut", "bas", "gauche", "droite"]:\n        g = deplacer(grille, d)\n        if g is not None:\n            resultat.append(g)\n    return resultat'},
- {title:'05 · Rechercher avec une borne',text:'On vérifie la victoire avant la profondeur : une grille résolue reste résolue avec n = 0. Une profondeur insuffisante ne prouve pas l’insolubilité. Cette version pédagogique peut revisiter des grilles ; IDA* évite les cycles du chemin courant.',code:'def rechercher(grille, n):\n    if est_resolu(grille, 0):\n        return True\n    if n == 0:\n        return False\n    for g in voisins(grille):\n        if rechercher(g, n - 1):\n            return True\n    return False'},
- {title:'06 · Construire une liste',text:'Le cas de base renvoie une liste vide. Le retour construit la liste en ajoutant la tuile actuelle devant le résultat du prochain appel. On ignore simplement le vide.',code:'def extraire_tuiles(grille, i):\n    if i == len(grille):\n        return []\n    if grille[i] == 0:\n        return extraire_tuiles(grille, i + 1)\n    return [grille[i]] + extraire_tuiles(grille, i + 1)'}
+import { useMemo, useState, useEffect } from "react";
+import {
+  ArrowRight,
+  ArrowLeft,
+  RotateCcw,
+  Play,
+  Pause,
+  Check,
+  Code2,
+  Layers,
+  Lightbulb,
+} from "lucide-react";
+import { wellPlacedTrace } from "../core/puzzle";
+const sample = [1, 2, 3, 4, 0, 6, 7, 5, 8];
+const lessons = [
+  {
+    title: "01 · Représenter la grille",
+    text: "Une liste de listes décrit les lignes. Aplatir la grille conserve son ordre de lecture. L’indice i correspond à la ligne i // 3 et à la colonne i % 3.",
+    code: "def aplatir(grille):\n    return [tuile for ligne in grille\n            for tuile in ligne]\n\ndef position_vide(liste):\n    return liste.index(0)\n\n# [1, 2, 3, 4, 0, 6, 7, 5, 8]",
+  },
+  {
+    title: "02 · Compter par récursivité",
+    text: "Chaque appel traite une case et délègue la suite au prochain appel. La case vide ne compte pas. Le paramètre i augmente : len(grille) − i diminue jusqu’à 0, ce qui garantit la terminaison.",
+    code: "def bien_placees(grille, i):\n    if i == len(grille):\n        return 0\n    if grille[i] == solution[i] and grille[i] != 0:\n        return 1 + bien_placees(grille, i + 1)\n    return bien_placees(grille, i + 1)",
+  },
+  {
+    title: "03 · Vérifier la solution",
+    text: "Le cas de base renvoie True après la dernière case. Une différence provoque un retour False immédiat : les appels restants sont inutiles.",
+    code: "def est_resolu(grille, i):\n    if i == len(grille):\n        return True\n    if grille[i] != solution[i]:\n        return False\n    return est_resolu(grille, i + 1)",
+  },
+  {
+    title: "04 · Déplacer et explorer",
+    text: "Une direction décrit le mouvement du vide, comme dans le sujet. Une tuile se déplace en sens opposé. Les contrôles de ligne empêchent le passage artificiel du bord droit au bord gauche.",
+    code: 'def deplacer(grille, direction):\n    p = grille.index(0)\n    ligne, colonne = divmod(p, 3)\n    dl, dc = {"haut": (-1, 0), "bas": (1, 0),\n              "gauche": (0, -1), "droite": (0, 1)}[direction]\n    l, c = ligne + dl, colonne + dc\n    if not (0 <= l < 3 and 0 <= c < 3):\n        return None\n    copie = grille.copy()\n    q = 3 * l + c\n    copie[p], copie[q] = copie[q], copie[p]\n    return copie\n\ndef voisins(grille):\n    resultat = []\n    for d in ["haut", "bas", "gauche", "droite"]:\n        g = deplacer(grille, d)\n        if g is not None:\n            resultat.append(g)\n    return resultat',
+  },
+  {
+    title: "05 · Rechercher avec une borne",
+    text: "On vérifie la victoire avant la profondeur : une grille résolue reste résolue avec n = 0. Une profondeur insuffisante ne prouve pas l’insolubilité. Cette version pédagogique peut revisiter des grilles ; IDA* évite les cycles du chemin courant.",
+    code: "def rechercher(grille, n):\n    if est_resolu(grille, 0):\n        return True\n    if n == 0:\n        return False\n    for g in voisins(grille):\n        if rechercher(g, n - 1):\n            return True\n    return False",
+  },
+  {
+    title: "06 · Construire une liste",
+    text: "Le cas de base renvoie une liste vide. Le retour construit la liste en ajoutant la tuile actuelle devant le résultat du prochain appel. On ignore simplement le vide.",
+    code: "def extraire_tuiles(grille, i):\n    if i == len(grille):\n        return []\n    if grille[i] == 0:\n        return extraire_tuiles(grille, i + 1)\n    return [grille[i]] + extraire_tuiles(grille, i + 1)",
+  },
 ];
-export function Recursion(){const [lesson,setLesson]=useState(1),[start,setStart]=useState(5),[step,setStep]=useState(0),[playing,setPlaying]=useState(false);const trace=useMemo(()=>wellPlacedTrace(sample,start),[start]);const event=trace[step];useEffect(()=>{if(!playing)return;const t=setInterval(()=>setStep(s=>{if(s>=trace.length-1){setPlaying(false);return s;}return s+1;}),650);return()=>clearInterval(t);},[playing,trace]);return <section className="learning"><div className="section-intro"><span className="kicker">COMPRENDRE, UN APPEL À LA FOIS</span><h2>La récursivité devient visible.</h2><p>Un problème, un cas de base, puis un problème plus petit. Suivez le chemin des appels et celui des retours.</p></div><div className="learning-layout"><aside className="lesson-menu card"><span className="aside-title">LE PARCOURS NSI</span>{lessons.map((l,i)=><button key={l.title} className={i===lesson?'selected':''} aria-pressed={i===lesson} onClick={()=>setLesson(i)}>{l.title}<ArrowRight size={15}/></button>)}<div className="source-note"><Lightbulb size={18}/><p>Progression adaptée du sujet fourni « La récursivité — Le jeu du taquin », lycée J. Calvin, académie d’Amiens. Les exemples conservent les noms des fonctions du sujet.</p></div></aside><div><article className="card lesson-content"><span className="kicker">PYTHON · TERMINALE NSI</span><h3>{lessons[lesson].title.slice(5)}</h3><p>{lessons[lesson].text}</p><div className="code-title"><Code2 size={15}/> taquin.py <span>Lecture pédagogique · Python</span></div><pre><code>{lessons[lesson].code}</code></pre><p className="fine-print">Convention : solution = [1, 2, 3, 4, 5, 6, 7, 8, 0]. Ces extraits sont à lire et à expérimenter en Python ; ils ne sont pas exécutés dans cette page.</p></article><article className="card stack-lab"><div className="panel-heading"><div><span className="kicker">VISUALISEUR INTERACTIF</span><h3>Que fait la pile d’appels ?</h3></div><Layers size={23}/></div><p>Explorez <code>bien_placees</code> sur la grille du sujet.</p><div className="sample-grid">{sample.map((v,i)=><span key={i} className={event.index===i?'current':''}>{v}<small>i = {i}</small></span>)}</div><label className="start-index">Indice de départ <select aria-label="Indice de départ" value={start} onChange={e=>{setStart(Number(e.target.value));setStep(0);setPlaying(false);}}>{sample.map((_,i)=><option key={i} value={i}>{i}</option>)}</select></label><strong className="current-call">bien_placees(grille, {start})</strong><div className="trace-layout"><div className="call-stack" data-testid="call-stack" aria-label="Pile des appels">{[...event.stack].reverse().map((i,j)=><div key={i} className={j===0?'stack-top':''}><span>bien_placees</span><strong>i = {i}</strong><small>{j===0?'appel actif':'en attente'}</small></div>)}</div><div className="trace-explanation" aria-live="polite"><span className="pill">{event.type==='call'?'DESCENTE ↓':'RETOUR ↑'}</span><h4>{event.index===sample.length?'Le cas de base':event.type==='call'?`On examine l’indice ${event.index}`:`L’appel renvoie ${event.value}`}</h4><p>{event.type==='call'?(event.index===sample.length?'i == len(grille) : on renvoie 0. Aucun nouvel appel.':sample[event.index]===event.index+1&&sample[event.index]!==0?'La tuile est bien placée. Cet appel attend 1 + le résultat du suivant.':'La tuile ne compte pas. Cet appel attend le résultat du suivant.'):`Le résultat ${event.value} remonte à l’appel précédent. Sa variable locale i reste indépendante.`}</p><small>Événement {step+1} / {trace.length}</small></div></div><div className="trace-controls"><button className="icon-button" aria-label="Recommencer la trace" onClick={()=>{setStep(0);setPlaying(false);}}><RotateCcw size={17}/></button><button className="icon-button" aria-label="Étape précédente" disabled={step===0} onClick={()=>{setPlaying(false);setStep(s=>s-1);}}><ArrowLeft size={17}/></button><button className="secondary" onClick={()=>{if(step===trace.length-1)setStep(0);setPlaying(p=>!p);}}>{playing?<Pause size={16}/>:<Play size={16}/>} {playing?'Pause':'Lecture'}</button><button className="primary" disabled={step===trace.length-1} onClick={()=>{setPlaying(false);setStep(s=>s+1);}}>Étape suivante <ArrowRight size={16}/></button></div></article></div></div></section>}
-const questions=[
- {topic:'Coordonnées',question:'Dans [7, 8, 3, 5, 0, 4, 2, 1, 6], quelles sont les coordonnées du vide ?',choices:['(0, 0)','(1, 1)','(2, 1)'],answer:1,explanation:'Le 0 est à l’indice 4. Ligne = 4 // 3 = 1 ; colonne = 4 % 3 = 1. Les indices commencent à 0.'},
- {topic:'Déplacements',question:'Depuis cette même grille, combien de tuiles peuvent rejoindre la case vide ?',choices:['2','3','4'],answer:2,explanation:'Le vide est au centre : les tuiles 8, 1, 5 et 4 sont voisines orthogonalement. Les diagonales sont interdites.'},
- {topic:'Pile d’appels',question:'Que renvoie bien_placees([1, 2, 3, 4, 0, 6, 7, 5, 8], 5) ?',choices:['2','3','6'],answer:0,explanation:'À partir de i = 5, seules les tuiles 6 et 7 sont bien placées. On obtient 1 + 1 + 0 + 0 + 0 = 2.'},
- {topic:'Cas de base',question:'Quel cas de base termine bien_placees(grille, i) ?',choices:['if i == len(grille): return 0','if grille[i] == 0: return 0','if i == 0: return 1'],answer:0,explanation:'Après avoir traité toutes les cases, i atteint len(grille). On renvoie 0 pour terminer la somme, sans accéder à grille[i].'},
- {topic:'Recherche bornée',question:'Que renvoie rechercher([1, 2, 3, 4, 0, 6, 7, 5, 8], 1) ?',choices:['True','False','La fonction ne termine pas'],answer:1,explanation:'Il faut deux coups : déplacer le vide vers le bas puis vers la droite. La borne n = 1 ne suffit pas.'},
- {topic:'Ordre des tests',question:'Que renvoie rechercher(solution, 0) ?',choices:['False','True','None'],answer:1,explanation:'La victoire est testée avant n == 0. Une grille déjà résolue demande zéro déplacement.'},
- {topic:'Construction récursive',question:'Comment ignorer la case vide dans extraire_tuiles(grille, i) ?',choices:['return []','return [0] + extraire_tuiles(grille, i + 1)','return extraire_tuiles(grille, i + 1)'],answer:2,explanation:'On poursuit sans ajouter le 0. Renvoyer [] ici supprimerait aussi toutes les tuiles suivantes.'},
- {topic:'Algorithmes',question:'Pourquoi A* utilise-t-il une heuristique de Manhattan ?',choices:['Pour estimer le nombre de déplacements restants','Pour autoriser les déplacements en diagonale','Pour garantir un temps de calcul constant'],answer:0,explanation:'La somme des distances horizontales et verticales des tuiles est une borne inférieure du coût restant. Elle guide la recherche sans surestimer ce coût.'},
- {topic:'Terminaison',question:'Quelle quantité diminue à chaque appel de bien_placees ?',choices:['len(grille) − i','La longueur de grille','Le nombre de zéros'],answer:0,explanation:'La longueur ne change pas et i augmente de 1. Le variant len(grille) − i atteint donc 0.'},
- {topic:'Limites de recherche',question:'Une recherche arrêtée après 250 000 états prouve-t-elle qu’une grille est insoluble ?',choices:['Oui, toutes les configurations ont été explorées','Non, le budget peut être insuffisant','Oui, pour une grille 5 × 5'],answer:1,explanation:'Une limite de calcul signifie seulement que cette tentative n’a pas abouti. Elle n’est pas une preuve d’insolubilité.'}
+export function Recursion() {
+  const [lesson, setLesson] = useState(1),
+    [start, setStart] = useState(5),
+    [step, setStep] = useState(0),
+    [playing, setPlaying] = useState(false);
+  const trace = useMemo(() => wellPlacedTrace(sample, start), [start]);
+  const event = trace[step];
+  useEffect(() => {
+    if (!playing) return;
+    const t = setInterval(
+      () =>
+        setStep((s) => {
+          if (s >= trace.length - 1) {
+            setPlaying(false);
+            return s;
+          }
+          return s + 1;
+        }),
+      650,
+    );
+    return () => clearInterval(t);
+  }, [playing, trace]);
+  return (
+    <section className="learning">
+      <div className="section-intro">
+        <span className="kicker">COMPRENDRE, UN APPEL À LA FOIS</span>
+        <h2>La récursivité devient visible.</h2>
+        <p>
+          Un problème, un cas de base, puis un problème plus petit. Suivez le
+          chemin des appels et celui des retours.
+        </p>
+      </div>
+      <div className="learning-layout">
+        <aside className="lesson-menu card">
+          <span className="aside-title">LE PARCOURS NSI</span>
+          {lessons.map((l, i) => (
+            <button
+              key={l.title}
+              className={i === lesson ? "selected" : ""}
+              aria-pressed={i === lesson}
+              onClick={() => setLesson(i)}
+            >
+              {l.title}
+              <ArrowRight size={15} />
+            </button>
+          ))}
+          <div className="source-note">
+            <Lightbulb size={18} />
+            <p>
+              Progression adaptée du sujet fourni « La récursivité — Le jeu du
+              taquin », lycée J. Calvin, académie d’Amiens. Les exemples
+              conservent les noms des fonctions du sujet.
+            </p>
+          </div>
+        </aside>
+        <div>
+          <article className="card lesson-content">
+            <span className="kicker">PYTHON · TERMINALE NSI</span>
+            <h3>{lessons[lesson].title.slice(5)}</h3>
+            <p>{lessons[lesson].text}</p>
+            <div className="code-title">
+              <Code2 size={15} /> taquin.py{" "}
+              <span>Lecture pédagogique · Python</span>
+            </div>
+            <pre>
+              <code>{lessons[lesson].code}</code>
+            </pre>
+            <p className="fine-print">
+              Convention : solution = [1, 2, 3, 4, 5, 6, 7, 8, 0]. Ces extraits
+              sont à lire et à expérimenter en Python ; ils ne sont pas exécutés
+              dans cette page.
+            </p>
+          </article>
+          <article className="card stack-lab">
+            <div className="panel-heading">
+              <div>
+                <span className="kicker">VISUALISEUR INTERACTIF</span>
+                <h3>Que fait la pile d’appels ?</h3>
+              </div>
+              <Layers size={23} />
+            </div>
+            <p>
+              Explorez <code>bien_placees</code> sur la grille du sujet.
+            </p>
+            <div className="sample-grid">
+              {sample.map((v, i) => (
+                <span key={i} className={event.index === i ? "current" : ""}>
+                  {v}
+                  <small>i = {i}</small>
+                </span>
+              ))}
+            </div>
+            <label className="start-index">
+              Indice de départ{" "}
+              <select
+                aria-label="Indice de départ"
+                value={start}
+                onChange={(e) => {
+                  setStart(Number(e.target.value));
+                  setStep(0);
+                  setPlaying(false);
+                }}
+              >
+                {sample.map((_, i) => (
+                  <option key={i} value={i}>
+                    {i}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <strong className="current-call">
+              bien_placees(grille, {start})
+            </strong>
+            <div className="trace-layout">
+              <div
+                className="call-stack"
+                data-testid="call-stack"
+                aria-label="Pile des appels"
+              >
+                {[...event.stack].reverse().map((i, j) => (
+                  <div key={i} className={j === 0 ? "stack-top" : ""}>
+                    <span>bien_placees</span>
+                    <strong>i = {i}</strong>
+                    <small>{j === 0 ? "appel actif" : "en attente"}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="trace-explanation" aria-live="polite">
+                <span className="pill">
+                  {event.type === "call" ? "DESCENTE ↓" : "RETOUR ↑"}
+                </span>
+                <h4>
+                  {event.index === sample.length
+                    ? "Le cas de base"
+                    : event.type === "call"
+                      ? `On examine l’indice ${event.index}`
+                      : `L’appel renvoie ${event.value}`}
+                </h4>
+                <p>
+                  {event.type === "call"
+                    ? event.index === sample.length
+                      ? "i == len(grille) : on renvoie 0. Aucun nouvel appel."
+                      : sample[event.index] === event.index + 1 &&
+                          sample[event.index] !== 0
+                        ? "La tuile est bien placée. Cet appel attend 1 + le résultat du suivant."
+                        : "La tuile ne compte pas. Cet appel attend le résultat du suivant."
+                    : `Le résultat ${event.value} remonte à l’appel précédent. Sa variable locale i reste indépendante.`}
+                </p>
+                <small>
+                  Événement {step + 1} / {trace.length}
+                </small>
+              </div>
+            </div>
+            <div className="trace-controls">
+              <button
+                className="icon-button"
+                aria-label="Recommencer la trace"
+                onClick={() => {
+                  setStep(0);
+                  setPlaying(false);
+                }}
+              >
+                <RotateCcw size={17} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label="Étape précédente"
+                disabled={step === 0}
+                onClick={() => {
+                  setPlaying(false);
+                  setStep((s) => s - 1);
+                }}
+              >
+                <ArrowLeft size={17} />
+              </button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  if (step === trace.length - 1) setStep(0);
+                  setPlaying((p) => !p);
+                }}
+              >
+                {playing ? <Pause size={16} /> : <Play size={16} />}{" "}
+                {playing ? "Pause" : "Lecture"}
+              </button>
+              <button
+                className="primary"
+                disabled={step === trace.length - 1}
+                onClick={() => {
+                  setPlaying(false);
+                  setStep((s) => s + 1);
+                }}
+              >
+                Étape suivante <ArrowRight size={16} />
+              </button>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+const questions = [
+  {
+    topic: "Coordonnées",
+    question:
+      "Dans [7, 8, 3, 5, 0, 4, 2, 1, 6], quelles sont les coordonnées du vide ?",
+    choices: ["(0, 0)", "(1, 1)", "(2, 1)"],
+    answer: 1,
+    explanation:
+      "Le 0 est à l’indice 4. Ligne = 4 // 3 = 1 ; colonne = 4 % 3 = 1. Les indices commencent à 0.",
+  },
+  {
+    topic: "Déplacements",
+    question:
+      "Depuis cette même grille, combien de tuiles peuvent rejoindre la case vide ?",
+    choices: ["2", "3", "4"],
+    answer: 2,
+    explanation:
+      "Le vide est au centre : les tuiles 8, 1, 5 et 4 sont voisines orthogonalement. Les diagonales sont interdites.",
+  },
+  {
+    topic: "Pile d’appels",
+    question: "Que renvoie bien_placees([1, 2, 3, 4, 0, 6, 7, 5, 8], 5) ?",
+    choices: ["2", "3", "6"],
+    answer: 0,
+    explanation:
+      "À partir de i = 5, seules les tuiles 6 et 7 sont bien placées. On obtient 1 + 1 + 0 + 0 + 0 = 2.",
+  },
+  {
+    topic: "Cas de base",
+    question: "Quel cas de base termine bien_placees(grille, i) ?",
+    choices: [
+      "if i == len(grille): return 0",
+      "if grille[i] == 0: return 0",
+      "if i == 0: return 1",
+    ],
+    answer: 0,
+    explanation:
+      "Après avoir traité toutes les cases, i atteint len(grille). On renvoie 0 pour terminer la somme, sans accéder à grille[i].",
+  },
+  {
+    topic: "Recherche bornée",
+    question: "Que renvoie rechercher([1, 2, 3, 4, 0, 6, 7, 5, 8], 1) ?",
+    choices: ["True", "False", "La fonction ne termine pas"],
+    answer: 1,
+    explanation:
+      "Il faut deux coups : déplacer le vide vers le bas puis vers la droite. La borne n = 1 ne suffit pas.",
+  },
+  {
+    topic: "Ordre des tests",
+    question: "Que renvoie rechercher(solution, 0) ?",
+    choices: ["False", "True", "None"],
+    answer: 1,
+    explanation:
+      "La victoire est testée avant n == 0. Une grille déjà résolue demande zéro déplacement.",
+  },
+  {
+    topic: "Construction récursive",
+    question: "Comment ignorer la case vide dans extraire_tuiles(grille, i) ?",
+    choices: [
+      "return []",
+      "return [0] + extraire_tuiles(grille, i + 1)",
+      "return extraire_tuiles(grille, i + 1)",
+    ],
+    answer: 2,
+    explanation:
+      "On poursuit sans ajouter le 0. Renvoyer [] ici supprimerait aussi toutes les tuiles suivantes.",
+  },
+  {
+    topic: "Algorithmes",
+    question: "Pourquoi A* utilise-t-il une heuristique de Manhattan ?",
+    choices: [
+      "Pour estimer le nombre de déplacements restants",
+      "Pour autoriser les déplacements en diagonale",
+      "Pour garantir un temps de calcul constant",
+    ],
+    answer: 0,
+    explanation:
+      "La somme des distances horizontales et verticales des tuiles est une borne inférieure du coût restant. Elle guide la recherche sans surestimer ce coût.",
+  },
+  {
+    topic: "Terminaison",
+    question: "Quelle quantité diminue à chaque appel de bien_placees ?",
+    choices: ["len(grille) − i", "La longueur de grille", "Le nombre de zéros"],
+    answer: 0,
+    explanation:
+      "La longueur ne change pas et i augmente de 1. Le variant len(grille) − i atteint donc 0.",
+  },
+  {
+    topic: "Limites de recherche",
+    question:
+      "Une recherche arrêtée après 250 000 états prouve-t-elle qu’une grille est insoluble ?",
+    choices: [
+      "Oui, toutes les configurations ont été explorées",
+      "Non, le budget peut être insuffisant",
+      "Oui, pour une grille 5 × 5",
+    ],
+    answer: 1,
+    explanation:
+      "Une limite de calcul signifie seulement que cette tentative n’a pas abouti. Elle n’est pas une preuve d’insolubilité.",
+  },
 ];
-export function Exercises(){const [q,setQ]=useState(0),[choice,setChoice]=useState<number|null>(null),[checked,setChecked]=useState(false),[answers,setAnswers]=useState<Record<number,boolean>>({});const current=questions[q],score=Object.values(answers).filter(Boolean).length;function go(index:number){setQ(index);setChoice(null);setChecked(false);}return <section className="learning"><div className="section-intro"><span className="kicker">À VOUS DE RAISONNER</span><h2>Une idée comprise, une étape franchie.</h2><p>Dix défis progressifs inspirés du sujet. Essayez, vérifiez, puis comprenez votre réponse.</p></div><div className="exercise-layout"><aside className="card exercise-progress"><GraduationIcon/><h3>Votre parcours</h3><strong className="score">{score}<span> / {questions.length}</span></strong><p>bonnes réponses au premier essai</p><div className="question-dots">{questions.map((x,i)=><button key={i} aria-label={`Question ${i+1} : ${x.topic}`} aria-current={q===i?'step':undefined} className={q===i?'current':i in answers?answers[i]?'done':'attempted':''} onClick={()=>go(i)}>{i in answers&&answers[i]?<Check size={16}/>:i+1}</button>)}</div><small>Progression de cet exercice conservée tant que cette page est ouverte.</small><button className="text-button" onClick={()=>{setAnswers({});go(0);}}><RotateCcw size={14}/> Recommencer</button></aside><article className="card exercise-card"><div className="panel-heading"><span className="pill">{current.topic}</span><span className="kicker">QUESTION {q+1} / {questions.length}</span></div><h3>{current.question}</h3><fieldset><legend>Choisissez une réponse</legend>{current.choices.map((c,i)=><label key={`${q}-${i}`} className={`answer-option ${checked&&i===current.answer?'correct':''} ${checked&&choice===i&&i!==current.answer?'incorrect':''}`}><input type="radio" name="answer" value={i} checked={choice===i} disabled={checked} onChange={()=>setChoice(i)}/><span>{c}</span>{checked&&i===current.answer&&<Check size={18}/>}</label>)}</fieldset>{checked?<div className={`feedback ${choice===current.answer?'success':'retry'}`} role="status"><h4>{choice===current.answer?'Bonne réponse !':'Pas tout à fait.'}</h4><p>{current.explanation}</p></div>:<button className="primary" disabled={choice===null} onClick={()=>{setChecked(true);setAnswers(a=>q in a?a:{...a,[q]:choice===current.answer});}}>Vérifier ma réponse <ArrowRight size={16}/></button>}<div className="exercise-nav"><button className="text-button" disabled={q===0} onClick={()=>go(q-1)}><ArrowLeft size={15}/> Précédente</button><button className="text-button" disabled={q===questions.length-1} onClick={()=>go(q+1)}>Question suivante <ArrowRight size={15}/></button></div></article></div></section>}
-function GraduationIcon(){return <span className="mini-icon"><Code2 size={23}/></span>}
+export function Exercises() {
+  const [q, setQ] = useState(0),
+    [choice, setChoice] = useState<number | null>(null),
+    [checked, setChecked] = useState(false),
+    [answers, setAnswers] = useState<Record<number, boolean>>({});
+  const current = questions[q],
+    score = Object.values(answers).filter(Boolean).length;
+  function go(index: number) {
+    setQ(index);
+    setChoice(null);
+    setChecked(false);
+  }
+  return (
+    <section className="learning">
+      <div className="section-intro">
+        <span className="kicker">À VOUS DE RAISONNER</span>
+        <h2>Une idée comprise, une étape franchie.</h2>
+        <p>
+          Dix défis progressifs inspirés du sujet. Essayez, vérifiez, puis
+          comprenez votre réponse.
+        </p>
+      </div>
+      <div className="exercise-layout">
+        <aside className="card exercise-progress">
+          <GraduationIcon />
+          <h3>Votre parcours</h3>
+          <strong className="score">
+            {score}
+            <span> / {questions.length}</span>
+          </strong>
+          <p>bonnes réponses au premier essai</p>
+          <div className="question-dots">
+            {questions.map((x, i) => (
+              <button
+                key={i}
+                aria-label={`Question ${i + 1} : ${x.topic}`}
+                aria-current={q === i ? "step" : undefined}
+                className={
+                  q === i
+                    ? "current"
+                    : i in answers
+                      ? answers[i]
+                        ? "done"
+                        : "attempted"
+                      : ""
+                }
+                onClick={() => go(i)}
+              >
+                {i in answers && answers[i] ? <Check size={16} /> : i + 1}
+              </button>
+            ))}
+          </div>
+          <small>
+            Progression de cet exercice conservée tant que cette page est
+            ouverte.
+          </small>
+          <button
+            className="text-button"
+            onClick={() => {
+              setAnswers({});
+              go(0);
+            }}
+          >
+            <RotateCcw size={14} /> Recommencer
+          </button>
+        </aside>
+        <article className="card exercise-card">
+          <div className="panel-heading">
+            <span className="pill">{current.topic}</span>
+            <span className="kicker">
+              QUESTION {q + 1} / {questions.length}
+            </span>
+          </div>
+          <h3>{current.question}</h3>
+          <fieldset>
+            <legend>Choisissez une réponse</legend>
+            {current.choices.map((c, i) => (
+              <label
+                key={`${q}-${i}`}
+                className={`answer-option ${checked && i === current.answer ? "correct" : ""} ${checked && choice === i && i !== current.answer ? "incorrect" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="answer"
+                  value={i}
+                  checked={choice === i}
+                  disabled={checked}
+                  onChange={() => setChoice(i)}
+                />
+                <span>{c}</span>
+                {checked && i === current.answer && <Check size={18} />}
+              </label>
+            ))}
+          </fieldset>
+          {checked ? (
+            <div
+              className={`feedback ${choice === current.answer ? "success" : "retry"}`}
+              role="status"
+            >
+              <h4>
+                {choice === current.answer
+                  ? "Bonne réponse !"
+                  : "Pas tout à fait."}
+              </h4>
+              <p>{current.explanation}</p>
+            </div>
+          ) : (
+            <button
+              className="primary"
+              disabled={choice === null}
+              onClick={() => {
+                setChecked(true);
+                setAnswers((a) =>
+                  q in a ? a : { ...a, [q]: choice === current.answer },
+                );
+              }}
+            >
+              Vérifier ma réponse <ArrowRight size={16} />
+            </button>
+          )}
+          <div className="exercise-nav">
+            <button
+              className="text-button"
+              disabled={q === 0}
+              onClick={() => go(q - 1)}
+            >
+              <ArrowLeft size={15} /> Précédente
+            </button>
+            <button
+              className="text-button"
+              disabled={q === questions.length - 1}
+              onClick={() => go(q + 1)}
+            >
+              Question suivante <ArrowRight size={15} />
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+function GraduationIcon() {
+  return (
+    <span className="mini-icon">
+      <Code2 size={23} />
+    </span>
+  );
+}

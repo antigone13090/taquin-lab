@@ -48,7 +48,7 @@ Le chronomètre mesure la session active, sans les pauses ni le temps où la pag
 
 Le workflow `.github/workflows/ci.yml` lance les tests unitaires, TypeScript, le build et Playwright sur ordinateur/mobile. Seulement si tout passe sur `main`, il publie `dist` dans la branche `gh-pages`.
 
-Cloudflare Pages a refusé la connexion Git et la création de projet lors de la mise en place (erreurs fournisseur 8000011 / 8000030). Le relais statique `hosting/worker.mjs` utilise donc Cloudflare Workers et une source GitHub publique fixe, sans secret côté client ni jeton de déploiement stocké dans le dépôt. Le HTML est actualisé sous environ quelques minutes (cache GitHub et edge), les assets sont nommés par hash. Les quotas gratuits de Cloudflare Workers s'appliquent ; aucun service payant n'est activé. Le Worker n'accepte que GET/HEAD et les chemins statiques autorisés.
+Cloudflare Pages a refusé la connexion Git et la création de projet lors de la mise en place (erreurs fournisseur 8000011 / 8000030). Le relais statique `hosting/worker.mjs` utilise donc Cloudflare Workers et une source GitHub publique fixe, sans secret côté client ni jeton de déploiement stocké dans le dépôt. Le HTML est actualisé sous environ quelques minutes (cache GitHub et edge), les assets sont nommés par hash et conservés entre les publications pour les sessions déjà ouvertes. Les quotas gratuits de Cloudflare Workers s'appliquent ; aucun service payant n'est activé. Le Worker n'accepte que GET/HEAD et les chemins statiques autorisés.
 
 Pour passer ultérieurement à GitHub Pages : activer Settings → Pages → Deploy from a branch → `gh-pages` / root. Aucun changement du build n'est requis (URLs relatives).
 

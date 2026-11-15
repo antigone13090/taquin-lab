@@ -1,7 +1,125 @@
-import {test,expect} from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
-test('jouer, changer de taille et restaurer sa partie',async({page})=>{await page.goto('/');await expect(page.getByRole('heading',{name:'Un petit jeu. De grandes idées.'})).toBeVisible();await page.getByRole('button',{name:'4 × 4',exact:true}).click();await expect(page.getByTestId('board').getByRole('button')).toHaveCount(15);await page.getByRole('button',{name:'5 × 5',exact:true}).click();await expect(page.getByTestId('board').getByRole('button')).toHaveCount(24);const before=await page.getByTestId('board').innerText();await page.reload();expect(await page.getByTestId('board').innerText()).toBe(before);await page.getByRole('button',{name:'3 × 3',exact:true}).click();const legal=page.getByTestId('board').locator('button:not([disabled])').first();await legal.click();await expect(page.getByTestId('moves')).toHaveText('1');await page.getByRole('button',{name:'Annuler le dernier coup'}).click();await expect(page.getByTestId('moves')).toHaveText('0');});
-test('résoudre avec animation et comparer les algorithmes',async({page})=>{await page.goto('/');await page.getByRole('button',{name:'Défi découverte'}).click();await page.getByRole('button',{name:'Résoudre',exact:true}).click();await expect(page.getByText('Solution trouvée', {exact:false}).first()).toBeVisible();await page.getByRole('button',{name:'Animer la solution'}).click();await expect(page.getByText('Bravo, taquin résolu !',{exact:false}).first()).toBeVisible();await page.getByRole('button',{name:'Laboratoire',exact:true}).click();await page.getByRole('button',{name:'Comparer les algorithmes'}).click();await expect(page.getByRole('table')).toContainText('BFS');await expect(page.getByRole('table')).toContainText('Résolu');});
-test('parcours NSI, pile et exercices corrigés',async({page})=>{await page.goto('/');await page.getByRole('button',{name:'Récursivité',exact:true}).click();await expect(page.getByText('bien_placees(grille, 5)',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Étape suivante'}).click();await expect(page.getByTestId('call-stack')).toContainText('i = 6');await page.getByRole('button',{name:'Exercices',exact:true}).click();await page.getByRole('radio',{name:'(1, 1)',exact:true}).check();await page.getByRole('button',{name:'Vérifier ma réponse'}).click();await expect(page.getByText('Bonne réponse !')).toBeVisible();});
-test('accessibilité et absence de débordement',async({page})=>{await page.goto('/');await page.screenshot({path:test.info().outputPath('taquin-lab.png'),fullPage:true});for(const tab of ['Jouer','Laboratoire','Récursivité','Exercices']){await page.getByRole('button',{name:tab,exact:true}).click();expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}});
-test('sauvegarde corrompue et clavier',async({page})=>{await page.goto('/');await page.evaluate(()=>localStorage.setItem('taquin-lab:session','{"version":1,"board":[0]}'));await page.reload();await expect(page.getByTestId('board').getByRole('button')).toHaveCount(8);await page.getByRole('button',{name:'Défi découverte'}).click();await page.getByTestId('board').focus();await page.keyboard.press('ArrowRight');await expect(page.getByTestId('moves')).toHaveText('1');});
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+test("jouer, changer de taille et restaurer sa partie", async ({ page }) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Un petit jeu. De grandes idées." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "4 × 4", exact: true }).click();
+  await expect(page.getByTestId("board").getByRole("button")).toHaveCount(15);
+  await page.getByRole("button", { name: "5 × 5", exact: true }).click();
+  await expect(page.getByTestId("board").getByRole("button")).toHaveCount(24);
+  const before = await page.getByTestId("board").innerText();
+  await page.reload();
+  expect(await page.getByTestId("board").innerText()).toBe(before);
+  await page.getByRole("button", { name: "3 × 3", exact: true }).click();
+  const legal = page
+    .getByTestId("board")
+    .locator("button:not([disabled])")
+    .first();
+  await legal.click();
+  await expect(page.getByTestId("moves")).toHaveText("1");
+  await page.getByRole("button", { name: "Annuler le dernier coup" }).click();
+  await expect(page.getByTestId("moves")).toHaveText("0");
+});
+test("résoudre avec animation et comparer les algorithmes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Défi découverte" }).click();
+  await page.getByRole("button", { name: "Résoudre", exact: true }).click();
+  await expect(
+    page.getByText("Solution trouvée", { exact: false }).first(),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Animer la solution" }).click();
+  await expect(
+    page.getByText("Bravo, taquin résolu !", { exact: false }).first(),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Laboratoire", exact: true }).click();
+  await page.getByRole("button", { name: "Comparer les algorithmes" }).click();
+  await expect(page.getByRole("table")).toContainText("BFS");
+  await expect(page.getByRole("table")).toContainText("Résolu");
+});
+test("parcours NSI, pile et exercices corrigés", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Récursivité", exact: true }).click();
+  await expect(
+    page.getByText("bien_placees(grille, 5)", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Étape suivante" }).click();
+  await expect(page.getByTestId("call-stack")).toContainText("i = 6");
+  await page.getByRole("button", { name: "Exercices", exact: true }).click();
+  await page.getByRole("radio", { name: "(1, 1)", exact: true }).check();
+  await page.getByRole("button", { name: "Vérifier ma réponse" }).click();
+  await expect(page.getByText("Bonne réponse !")).toBeVisible();
+});
+test("accessibilité et absence de débordement", async ({ page }) => {
+  await page.goto("/");
+  await page.screenshot({
+    path: test.info().outputPath("taquin-lab.png"),
+    fullPage: true,
+  });
+  for (const tab of ["Jouer", "Laboratoire", "Récursivité", "Exercices"]) {
+    await page.getByRole("button", { name: tab, exact: true }).click();
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  }
+});
+test("sauvegarde corrompue et clavier", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() =>
+    localStorage.setItem("taquin-lab:session", '{"version":1,"board":[0]}'),
+  );
+  await page.reload();
+  await expect(page.getByTestId("board").getByRole("button")).toHaveCount(8);
+  await page.getByRole("button", { name: "Défi découverte" }).click();
+  await page.getByTestId("board").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("moves")).toHaveText("1");
+});
+
+test("le chronomètre avance, se met en pause et les exercices survivent aux onglets", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Défi découverte" }).click();
+  await page.getByTestId("board").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".stats-row strong").first()).not.toHaveText(
+    "00:00",
+    { timeout: 4000 },
+  );
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
+  const time = await page.locator(".stats-row strong").first().innerText();
+  await expect(page.getByText("En pause", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Exercices", exact: true }).click();
+  await page.getByRole("radio", { name: "(1, 1)", exact: true }).check();
+  await page.getByRole("button", { name: "Vérifier ma réponse" }).click();
+  await page.getByRole("button", { name: "Jouer", exact: true }).click();
+  await expect(page.locator(".stats-row strong").first()).toHaveText(time);
+  await page.getByRole("button", { name: "Exercices", exact: true }).click();
+  await expect(page.getByText("Bonne réponse !")).toBeVisible();
+  await expect(page.locator(".score")).toContainText("1");
+});
+
+test("changer de taille interrompt une animation", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Défi découverte" }).click();
+  await page.getByRole("button", { name: "Résoudre", exact: true }).click();
+  await page.getByRole("button", { name: "Animer la solution" }).click();
+  await page.getByRole("button", { name: "4 × 4", exact: true }).click();
+  await expect(page.getByTestId("board").getByRole("button")).toHaveCount(15);
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
+  await expect(page.getByText("En pause", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("moves")).toHaveText("0");
+});
