@@ -1,0 +1,5 @@
+import {it,expect} from 'vitest';
+// @ts-expect-error JavaScript edge module is validated independently in the runtime.
+import {serve} from '../../hosting/worker.mjs';
+it('sert uniquement les fichiers publics autorisés avec types MIME corrects',async()=>{const calls:string[]=[];const load=async(url:string)=>{calls.push(url);return new Response('content')};const r=await serve(new Request('https://lab.test/assets/app.js'),load);expect(r.headers.get('content-type')).toContain('javascript');expect(r.headers.get('x-content-type-options')).toBe('nosniff');expect(calls[0]).toBe('https://raw.githubusercontent.com/antigone13090/taquin-lab/gh-pages/assets/app.js');expect((await serve(new Request('https://lab.test/private.txt'),load)).status).toBe(404);expect((await serve(new Request('https://lab.test/',{method:'POST'}),load)).status).toBe(405)});
+it('renvoie une erreur temporaire quand la compilation est indisponible',async()=>{expect((await serve(new Request('https://lab.test/'),async()=>new Response('',{status:404}))).status).toBe(503)});
